@@ -160,6 +160,30 @@ def tratar_nomes_jogadores_times(dataframes):
     
     return dataframes_tratados
 
+# Remover Posição Real 'Outro'
+def remover_posicao_outros(df_agrupado):  
+
+    # Verificar valores únicos em Posicao_Real
+    if 'Posicao_Real' in df_agrupado.columns:
+        valores_unicos = df_agrupado['Posicao_Real'].value_counts()
+
+        for posicao, count in valores_unicos.items():
+            print(f"  {posicao}: {count:,} ({count/len(df_agrupado)*100:.1f}%)")
+        
+        # Remover 'Outro'
+        total_antes = len(df_agrupado)
+        df_filtrado = df_agrupado[df_agrupado['Posicao_Real'] != 'Outro'].copy()
+        total_depois = len(df_filtrado)
+        
+        print(f"\nRemovidos: {total_antes - total_depois:,} registros")
+        print(f"Restantes: {total_depois:,} registros")
+        print(f"Redução: {(1 - total_depois/total_antes)*100:.1f}%")
+        
+        return df_filtrado
+    else:
+        print("Coluna 'Posicao_Real' não encontrada")
+        return df_agrupado
+
 def main():
   try:
     # 1º Carregar os 3 datasets em um mesmo dataframe
@@ -186,7 +210,9 @@ def main():
     dataframes_agrupados = agrupar_dataframes(dataframes_tratados, ordem_colunas)
     #print(dataframes_agrupados.head())
 
-    return dataframes_tratados
+    df_base_tratada = remover_posicao_outros(dataframes_agrupados)
+
+    return dataframes_agrupados
 
   except Exception as e:
     print(f"\nErro no processamento: {e}")
