@@ -1,12 +1,16 @@
 import pandas as pd
 import traceback
 import unicodedata
+import numpy as np
+
+# Esconde o aviso de SettingWithCopy de uma vez por todas
+pd.options.mode.chained_assignment = None
 
 def carregar_dados():
   arquivos = [
-    'datasets/sofascore/brasileirao_2023_opta_final.csv',
-    'datasets/sofascore/brasileirao_2024_opta_final.csv', 
-    'datasets/sofascore/brasileirao_2025_opta_final.csv'
+    '/content/tcc-futebol-analise/datasets/sofascore/brasileirao_2023_opta_final.csv',
+    '/content/tcc-futebol-analise/datasets/sofascore/brasileirao_2024_opta_final.csv', 
+    '/content/tcc-futebol-analise/datasets/sofascore/brasileirao_2025_opta_final.csv'
   ]
 
   dataframes = []
@@ -184,6 +188,95 @@ def remover_posicao_outros(df_agrupado):
         print("Coluna 'Posicao_Real' não encontrada")
         return df_agrupado
 
+def resolver_valores_ausentes(df):
+    
+    ausentes_antes = df.isnull().sum()
+    total_ausentes_antes = ausentes_antes.sum()
+    print(f"Total de valores ausentes: {total_ausentes_antes:,}")
+    
+    colunas_criticas = ['Jogador', 'Time', 'Posicao_Real', 'minutesPlayed', 'rating']
+    
+    df_limpo = df.dropna(subset=colunas_criticas)
+    
+    print(f"Linhas removidas (colunas críticas): {len(df) - len(df_limpo)}")
+    
+    colunas_numericas = df_limpo.select_dtypes(include=[np.number]).columns.tolist()
+    
+    for col in colunas_criticas:
+        if col in colunas_numericas:
+            colunas_numericas.remove(col)
+    
+    acoes_jogo = ['totalPass', 'accuratePass', 'totalLongBalls', 'accurateLongBalls',
+                  'totalCross', 'accurateCross', 'totalShots', 'goals', 'totalTackle',
+                  'interceptionWon', 'ballRecovery', 'totalClearance', 'keyPass',
+                  'goalAssist', 'aerialWon', 'duelWon', 'touches', 'saves',
+                  'blockedScoringAttempt', 'shotOffTarget', 'onTargetScoringAttempt']
+    
+    acoes_jogo_existentes = [col for col in acoes_jogo if col in colunas_numericas]
+    
+    if acoes_jogo_existentes:
+      df_limpo.loc[:, acoes_jogo_existentes] = df_limpo[acoes_jogo_existentes].fillna(0)
+      print(f"Ações de jogo ({len(acoes_jogo_existentes)} colunas): preenchidas com 0")
+    
+    coordenadas = ['Avg_X', 'Avg_Y']
+    coordenadas_existentes = [col for col in coordenadas if col in colunas_numericas]
+    
+    if coordenadas_existentes:
+        for coord in coordenadas_existentes:
+            media_por_posicao = df_limpo.groupby('Posicao_Real')[coord].median()
+            df_limpo[coord] = df_limpo.apply(
+                lambda row: row[coord] if pd.notna(row[coord]) else media_por_posicao.get(row['Posicao_Real'], df_limpo[coord].median()),
+                axis=1
+            )
+        print(f"Coordenadas espaciais ({len(coordenadas_existentes)} colunas): preenchidas com média por posição")
+    
+    ratings = ['rating']
+    ratings_existentes = [col for col in ratings if col in colunas_numericas]
+    
+    if ratings_existentes:
+        for rating_col in ratings_existentes:
+            mediana_rating = df_limpo[rating_col].median()
+            df_limpo[rating_col] = df_limpo[rating_col].fillna(mediana_rating)
+        print(f"Ratings ({len(ratings_existentes)} colunas): preenchidos com mediana")
+    
+    colunas_restantes = [col for col in colunas_numericas 
+                        if col not in acoes_jogo_existentes + coordenadas_existentes + ratings_existentes]
+    
+    if colunas_restantes:
+        df_limpo[colunas_restantes] = df_limpo[colunas_restantes].fillna(0)
+        print(f"Demais colunas ({len(colunas_restantes)}): preenchidas com 0")
+    
+    ausentes_depois = df_limpo.isnull().sum()
+    total_ausentes_depois = ausentes_depois.sum()
+    print(f"Valores ausentes após tratamento: {total_ausentes_depois}")
+    
+    return df_limpo
+
+def resumo_estrutura_final(df):
+    print(f"Total de registros: {len(df):,}")
+    print(f"Total de colunas: {len(df.columns)}")
+    print(f"Período: {df['Temporada'].min()} - {df['Temporada'].max()}")
+    
+    times_unicos = df['Time'].nunique()
+    print(f"Times únicos: {times_unicos}")
+    
+    jogadores_unicos = df['Jogador'].nunique()
+    print(f"Jogadores únicos: {jogadores_unicos}")
+    
+    posicoes_unicas = df['Posicao_Real'].nunique()
+    print(f"Posições únicas: {posicoes_unicas}")
+    
+    print(f"\nDistribuição por posição:")
+    dist_posicao = df['Posicao_Real'].value_counts()
+    for posicao, count in dist_posicao.items():
+        print(f"  {posicao}: {count:,} ({count/len(df)*100:.1f}%)")
+    
+    print(f"\nEstatística dos jogadores (min):")
+    print(f"Média: {df['minutesPlayed'].mean():.1f}")
+    print(f"Mediana: {df['minutesPlayed'].median():.1f}")
+    print(f"Mínimo: {df['minutesPlayed'].min():.1f}")
+    print(f"Máximo: {df['minutesPlayed'].max():.1f}")
+
 def main():
   try:
     # 1º Carregar os 3 datasets em um mesmo dataframe
@@ -210,9 +303,22 @@ def main():
     dataframes_agrupados = agrupar_dataframes(dataframes_tratados, ordem_colunas)
     #print(dataframes_agrupados.head())
 
+    # 5º Remover Posição Real 'Outros'
     df_base_tratada = remover_posicao_outros(dataframes_agrupados)
 
-    return dataframes_agrupados
+    # 6º Resolver valores ausentes
+    df_final = resolver_valores_ausentes(df_base_tratada)
+
+    # 7º Resumo da estrutura final do dataset
+    resumo_estrutura_final(df_final);
+
+    # 8º Criar arquivo tratado e processado
+    caminho_exportacao = '/content/tcc-futebol-analise/datasets/processed/brasileirao_opta_final.csv'
+    
+    df_final.to_csv(caminho_exportacao, index=False)
+    print(f"\nBase final exportada com sucesso para: {caminho_exportacao}")
+
+    return df_final
 
   except Exception as e:
     print(f"\nErro no processamento: {e}")
@@ -221,4 +327,3 @@ def main():
 
 if __name__ == "__main__":
   dataset_base = main()
-
