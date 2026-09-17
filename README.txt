@@ -45,15 +45,25 @@ Implementação de algoritmos de clustering para identificar perfis de jogadores
 - Goleiro: ballRecovery, aerialWon, totalPass, accuratePass
 - Zagueiro: aerialWon, interceptionWon, totalTackle, ballRecovery
 - Volante: totalTackle, interceptionWon, ballRecovery, totalPass, accuratePass
-- Meia Central: keyPass, goalAssist, goals, totalShots, totalPass, accuratePass, touches
+- Meia Central: keyPass, goalAssist, goals, totalShots, ballRecovery, interceptionWon, wonTackle, possessionLostCtrl (combinação "sem_volume" - 8 variáveis)
 
 **Análise de resultados:**
-- Identificação de perfis de clusters (Criador, Finalizador, Defensivo, etc.)
+- Identificação de perfis de clusters com nomenclatura em português (Meia de Apoio, Meia atacante, Meia contenção)
 - Visualização 2D e 3D dos clusters
 - Análise de variância (ANOVA) para validar diferenciação entre clusters
 - Interpretação de perfis com jogadores representativos
+- **Tabela de centróides** - Comportamento médio dos jogadores por cluster
+- **Tabela de distribuição** - Quantidade de jogadores alocados por cluster
+- **Tabela estatística detalhada** - Média, mediana e desvio padrão das variáveis por cluster
+- **Análise detalhada do Cluster 0** - Top 10 jogadores e características específicas
 
-### 4. Gap Analysis (Identificação de Lacunas)
+**Metodologia de escolha de k e métricas:**
+- Validação através de métodos Elbow e Silhouette
+- Análise de sensibilidade de diferentes combinações de métricas
+- Combinação "sem_volume" para Meia Central (remoção de totalPass, accuratePass, touches)
+- Justificativa: Foco em métricas qualitativas que diferenciam melhor os perfis de meias
+
+### 4. Gap Analysis (Análise de Lacunas)
 
 Sistema de análise de desvios para identificar carências do elenco:
 
@@ -124,6 +134,28 @@ CONFIG = {
 }
 ```
 
+## Nomenclatura e Tradução
+
+Todas as variáveis e métricas foram traduzidas para português para facilitar a interpretação:
+
+**Variáveis principais:**
+- keyPass → Passes-chave
+- goalAssist → Assistências
+- goals → Gols
+- totalShots → Finalizações
+- totalPass → Total de passes
+- accuratePass → Passes certos
+- touches → Toques na bola
+- ballRecovery → Recuperações de bola
+- interceptionWon → Interceptações
+- wonTackle → Desarmes Ganhos
+- possessionLostCtrl → Perdas de posse
+
+**Nomes dos clusters:**
+- Cluster 0 → Meia de Apoio
+- Cluster 1 → Meia atacante
+- Cluster 2 → Meia contenção
+
 ## Tecnologias Utilizadas
 
 - **Python**: Linguagem principal
@@ -136,6 +168,26 @@ CONFIG = {
 - **Plotly**: Visualizações interativas 3D
 - **Requests**: Extração de dados via API (SofaScore)
 - **Google Colab**: Ambiente de desenvolvimento
+
+## Caso de Estudo: Meia Central
+
+**Objetivo:** Identificar perfis de meias centrais para análise tática e recomendações de contratação
+
+**Metodologia aplicada:**
+1. **Seleção de métricas:** Combinação "sem_volume" (8 variáveis qualitativas)
+2. **Determinação de k:** Métodos Elbow e Silhouette (ambos sugeriram k=3)
+3. **Validação estatística:** ANOVA para confirmar diferenciação significativa entre clusters
+4. **Nomenclatura:** Termos de futebol em português (Meia de Apoio, Meia atacante, Meia contenção)
+
+**Resultados obtidos:**
+- **Cluster 0 (41.2%):** Meia de Apoio - jogadores com participação limitada
+- **Cluster 1 (17.3%):** Meia atacante - jogadores ofensivos com alta produção
+- **Cluster 2 (41.5%):** Meia contenção - jogadores defensivos com alto recuperação
+
+**Justificativa para k=3:**
+- Consistência entre métodos Elbow e Silhouette
+- Separação clara entre perfis ofensivos e defensivos
+- Interpretação tática válida para contexto do futebol brasileiro
 
 ## Metodologia Científica
 
@@ -159,6 +211,12 @@ Arquivos gerados durante a execução:
 - `clusters_kmeans.png`: Visualização 2D dos clusters K-Means
 - `clusters_3d.html`: Visualização interativa 3D
 
+**Tabelas de Análise:**
+- `tabela_centroides_kmeans.csv`: Comportamento médio dos jogadores por cluster (centróides)
+- `tabela_distribuicao_clusters_kmeans.csv`: Quantidade de jogadores alocados por cluster
+- `tabela_estatistica_clusters_formatada.csv`: Tabela estatística detalhada (média, mediana, desvio padrão) por cluster
+- `tabela_estatistica_clusters_completa.csv`: Tabela estatística completa com todas as métricas
+
 **Gap Analysis:**
 - `gap_analysis_[time].png`: Relatório visual de gaps
 - `recomendacoes_[time].png`: Gráfico de recomendações de contratação
@@ -170,10 +228,4 @@ Arquivos gerados durante a execução:
 - O projeto pode ser expandido com novas temporadas, ligas ou variáveis
 - A análise de gaps requer dados de benchmarks para comparação
 - O sistema de recomendação considera pesos específicos por posição e métrica
-
-## Próximos Passos
-
-- Implementação de modelo preditivo para recomendação de jogadores
-- Expansão para outras ligas e competições
-- Integração com dados de mercado de transferências
-- Desenvolvimento de interface para visualização interativa
+- Para Meia Central, a combinação "sem_volume" (8 variáveis) foi validada estatisticamente
